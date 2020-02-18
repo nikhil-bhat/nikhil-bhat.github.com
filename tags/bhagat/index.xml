@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>bhagat on Nikhil Bhat</title>
+    <link>https://nikhil-bhat.github.io/tags/bhagat/</link>
+    <description>Recent content in bhagat on Nikhil Bhat</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en</language>
+    <lastBuildDate>Tue, 18 Feb 2020 11:12:09 +0530</lastBuildDate>
+    
+	<atom:link href="https://nikhil-bhat.github.io/tags/bhagat/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Old Game on bhagat singh</title>
+      <link>https://nikhil-bhat.github.io/posts/abandoned/</link>
+      <pubDate>Tue, 18 Feb 2020 11:12:09 +0530</pubDate>
+      
+      <guid>https://nikhil-bhat.github.io/posts/abandoned/</guid>
+      <description>Recently came across this article
+Took me back to good old college days when my friend had demoed this game to me.
+The novelty factor about this game being Hindi dialogue.
+I wanted to relive the experience and luckily, i found the game on an abandonware site.
+Here I have jotted down the steps to actually play this game on Linux which is my OS of choice
+wget https://dl.myabandonware.com/t/37eh49RPy2DEroOS85U1CIF6w3b611vERgHURK0A3p5dl53Yc6/Bhagat-Singh-The-Game_Win_EN_ISO-Version.zip sudo apt install -y bchunk wine64 unzip -d bhagat Bhagat-Singh-The-Game_Win_EN_ISO-Version.</description>
+    </item>
+    
+  </channel>
+</rss>

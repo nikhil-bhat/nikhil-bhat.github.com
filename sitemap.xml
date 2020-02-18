@@ -3,19 +3,87 @@
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   
   <url>
-    <loc>https://nikhil-bhat.github.io/categories/</loc>
+    <loc>https://nikhil-bhat.github.io/contact/</loc>
+    <lastmod>2020-02-18T11:33:00+05:30</lastmod>
   </url>
   
   <url>
     <loc>https://nikhil-bhat.github.io/</loc>
+    <lastmod>2020-02-18T11:33:00+05:30</lastmod>
   </url>
   
   <url>
-    <loc>https://nikhil-bhat.github.io/series/</loc>
+    <loc>https://nikhil-bhat.github.io/projects/</loc>
+    <lastmod>2020-02-18T11:30:45+05:30</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://nikhil-bhat.github.io/about/</loc>
+    <lastmod>2020-02-18T11:25:25+05:30</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://nikhil-bhat.github.io/tags/bhagat/</loc>
+    <lastmod>2020-02-18T11:12:09+05:30</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://nikhil-bhat.github.io/categories/</loc>
+    <lastmod>2020-02-18T11:12:09+05:30</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://nikhil-bhat.github.io/tags/game/</loc>
+    <lastmod>2020-02-18T11:12:09+05:30</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://nikhil-bhat.github.io/categories/games/</loc>
+    <lastmod>2020-02-18T11:12:09+05:30</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://nikhil-bhat.github.io/categories/howto/</loc>
+    <lastmod>2020-02-18T11:12:09+05:30</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://nikhil-bhat.github.io/tags/linux/</loc>
+    <lastmod>2020-02-18T11:12:09+05:30</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://nikhil-bhat.github.io/categories/linux/</loc>
+    <lastmod>2020-02-18T11:12:09+05:30</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://nikhil-bhat.github.io/posts/abandoned/</loc>
+    <lastmod>2020-02-18T11:12:09+05:30</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://nikhil-bhat.github.io/posts/</loc>
+    <lastmod>2020-02-18T11:12:09+05:30</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://nikhil-bhat.github.io/tags/singh/</loc>
+    <lastmod>2020-02-18T11:12:09+05:30</lastmod>
   </url>
   
   <url>
     <loc>https://nikhil-bhat.github.io/tags/</loc>
+    <lastmod>2020-02-18T11:12:09+05:30</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://nikhil-bhat.github.io/tags/wine/</loc>
+    <lastmod>2020-02-18T11:12:09+05:30</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://nikhil-bhat.github.io/series/</loc>
   </url>
   
 </urlset>
