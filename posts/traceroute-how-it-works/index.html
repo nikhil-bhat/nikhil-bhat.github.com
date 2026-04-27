@@ -404,13 +404,9 @@ ICMP Listener ←── ICMP Time Exceeded / Dest Unreachable
 
 <p>One interesting challenge I ran into — I initially started with <strong>port 30000</strong> as my base port instead of 33435. Everything seemed to work fine for the intermediate hops (I was getting ICMP Time Exceeded responses from routers along the path), but the traceroute would <strong>never terminate</strong>. The destination host simply wasn't sending back an ICMP Port Unreachable message.</p>
 
-<p>The intermediate hops were working fine — routers along the path were sending back ICMP Time Exceeded as expected. But my traceroute would just keep going past the destination, never terminating. I wasn't getting the ICMP Port Unreachable message that signals "you've arrived." Meanwhile, the system <code>traceroute</code> worked perfectly for the same destination.</p>
+<p>When I implemented the code and started testing, I had chosen 30,000 as the UDP destination port. I was getting Time Exceeded from intermediary routers — what I was not getting was the Port Unreachable from my intended destination. I immediately tried <code>traceroute</code> and it was working fine. At that point I fired up my Wireshark and started noting the packets. The only difference was the starting port: 33435. I changed the port and boom — my code started working.</p>
 
-<p>Wireshark saved me here. I ran both implementations side by side and compared the captures. The system traceroute (using ports starting at 33435) was getting ICMP Port Unreachable responses from the destination. My implementation (using ports around 30000) was getting... nothing. The UDP probes were reaching the destination, but no ICMP response was coming back.</p>
-
-<p>I don't know the exact reason why port 30000 didn't produce Port Unreachable responses. My best guess is that modern systems and firewalls are selective about when they send ICMP traffic — they may recognize port 33435 as the well-known traceroute port and allow the ICMP Port Unreachable response through, while silently dropping or filtering it for arbitrary ports like 30000. Firewalls often suppress ICMP responses as a security measure, and it's plausible they make exceptions for the standard traceroute port range since it's expected diagnostic traffic.</p>
-
-<p>Whatever the exact reason, switching to <strong>33435</strong> as the base port immediately fixed the problem — the Port Unreachable messages started flowing and my traceroute could finally detect when it reached the destination. Sometimes you don't get the full "why," but Wireshark at least shows you the "what" clearly enough to move forward.</p>
+<p>I don't know the exact reason, but I suspect maybe firewalls only send ICMP traffic for the 33435+ range ports and drop it for other ports, even though they should be sending the Port Unreachable code — just to keep traceroute running and ignoring other packets.</p>
 
 <h2>Running It</h2>
 
