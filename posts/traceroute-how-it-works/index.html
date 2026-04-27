@@ -402,7 +402,11 @@ ICMP Listener ←── ICMP Time Exceeded / Dest Unreachable
 
 <p>One interesting challenge I ran into — I initially started with <strong>port 30000</strong> as my base port instead of 33435. Everything seemed to work fine for the intermediate hops (I was getting ICMP Time Exceeded responses from routers along the path), but the traceroute would <strong>never terminate</strong>. The destination host simply wasn't sending back an ICMP Port Unreachable message.</p>
 
-<p>After some head-scratching and Wireshark sessions, it clicked: ports in the 30000 range are commonly used by real services. If something on the destination is actually <strong>listening</strong> on that port, the packet gets accepted instead of being rejected — and you never get your Port Unreachable signal. The classic traceroute base port of <strong>33435</strong> was chosen precisely because it sits in the ephemeral/high port range where nothing is typically listening. A small detail, but it completely breaks the stop condition if you get it wrong.</p>
+<p>The intermediate hops were working fine — routers were sending back Time Exceeded as expected. But the traceroute would just keep going past the destination, never stopping. I knew the real <code>traceroute</code> command worked fine for the same host, so the issue had to be in my code.</p>
+
+<p>Wireshark saved me here. I ran both the system <code>traceroute</code> and my implementation side by side and compared the captures. The system traceroute was getting ICMP Port Unreachable responses from the destination, but mine wasn't. The difference? The destination port. The system traceroute used ports starting at 33435, while mine was hitting ports around 30000 — and something on the destination was actually <strong>listening</strong> on those ports, so the packets were being silently accepted instead of rejected.</p>
+
+<p>The classic traceroute base port of <strong>33435</strong> was chosen precisely because it sits in a range where nothing is typically listening. A small detail, but it completely breaks the stop condition if you get it wrong. Wireshark made the problem obvious in seconds — I could literally see the Port Unreachable responses showing up for the system traceroute and being absent for mine.</p>
 
 <h2>Running It</h2>
 
