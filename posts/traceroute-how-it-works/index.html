@@ -157,7 +157,7 @@
 
 <h2>The Core Idea: TTL as a Countdown Timer</h2>
 
-<p>Every IP packet has a field called <strong>TTL (Time To Live)</strong>. Despite the name, it's not really about time — it's a <strong>hop counter</strong>. Every router that forwards a packet decrements the TTL by 1. When the TTL hits zero, the router <strong>drops</strong> the packet and sends back an <strong>ICMP Time Exceeded</strong> message to the sender.</p>
+<p>Every IP packet has a field called <strong><a href="https://en.wikipedia.org/wiki/Time_to_live">TTL (Time To Live)</a></strong>. Despite the name, it's not really about time — it's a <strong>hop counter</strong>. Every router that forwards a packet decrements the TTL by 1. When the TTL hits zero, the router <strong>drops</strong> the packet and sends back an <strong>ICMP Time Exceeded</strong> message to the sender.</p>
 
 <p>Traceroute exploits this beautifully:</p>
 
