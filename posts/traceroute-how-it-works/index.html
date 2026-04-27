@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="author" content="Nikhil Bhat">
+    <meta name="description" content="How traceroute works under the hood — building one from scratch in Go using raw UDP probes and ICMP listeners.">
+    <meta name="keywords" content="blog,developer,personal,networking,traceroute,golang">
+
+    <meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Traceroute: How It Actually Works"/>
+<meta name="twitter:description" content="How traceroute works under the hood — building one from scratch in Go using raw UDP probes and ICMP listeners."/>
+
+    <meta property="og:title" content="Traceroute: How It Actually Works" />
+<meta property="og:description" content="How traceroute works under the hood — building one from scratch in Go using raw UDP probes and ICMP listeners." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://nikhil-bhat.github.io/posts/traceroute-how-it-works/" />
+<meta property="article:published_time" content="2026-04-27T23:40:00+05:30" />
+<meta property="article:modified_time" content="2026-04-27T23:40:00+05:30" />
+
+
+    
+      <base href="https://nikhil-bhat.github.io/posts/traceroute-how-it-works/">
+    
+    <title>
+  Traceroute: How It Actually Works · Nikhil Bhat
+</title>
+
+    
+      <link rel="canonical" href="https://nikhil-bhat.github.io/posts/traceroute-how-it-works/">
+    
+
+    <link href="https://fonts.googleapis.com/css?family=Lato:400,700%7CMerriweather:300,700%7CSource+Code+Pro:400,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.11.2/css/all.css" integrity="sha384-KA6wR/X5RY4zFAHpv/CnoG2UW1uogYfdnP67Uv7eULvTveboZJg0qUpmJZb5VqzN" crossorigin="anonymous" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css" integrity="sha256-l85OmPOjvil/SOvVt3HnSSjzF1TUMyT9eV0c2BzEGzU=" crossorigin="anonymous" />
+
+    
+      
+      
+      <link rel="stylesheet" href="https://nikhil-bhat.github.io/css/coder.min.ab11da33926aff1bbed738198c81361e84bf702098a3e97ed5b24126bde6c9ba.css" integrity="sha256-qxHaM5Jq/xu&#43;1zgZjIE2HoS/cCCYo&#43;l&#43;1bJBJr3mybo=" crossorigin="anonymous" media="screen" />
+    
+
+    
+
+    
+      
+        
+        
+        <link rel="stylesheet" href="https://nikhil-bhat.github.io/css/coder-dark.min.83a2010dac9f59f943b3004cd6c4f230507ad036da635d3621401d42ec4e2835.css" integrity="sha256-g6IBDayfWflDswBM1sTyMFB60DbaY102IUAdQuxOKDU=" crossorigin="anonymous" media="screen" />
+      
+    
+
+    
+
+    
+
+    
+
+    <link rel="icon" type="image/png" href="https://nikhil-bhat.github.io/images/favicon-32x32.png" sizes="32x32">
+    <link rel="icon" type="image/png" href="https://nikhil-bhat.github.io/images/favicon-16x16.png" sizes="16x16">
+
+    <meta name="generator" content="Hugo 0.64.1" />
+  </head>
+
+  
+  
+    
+  
+  <body class="colorscheme-auto">
+    <main class="wrapper">
+      <nav class="navigation">
+  <section class="container">
+    <a class="navigation-title" href="https://nikhil-bhat.github.io/">
+      Nikhil Bhat
+    </a>
+    
+    <input type="checkbox" id="menu-toggle" />
+    <label class="menu-button float-right" for="menu-toggle"><i class="fas fa-bars"></i></label>
+    <ul class="navigation-list">
+      
+        
+          <li class="navigation-item">
+            <a class="navigation-link" href="https://nikhil-bhat.github.io/about/">About</a>
+          </li>
+        
+          <li class="navigation-item">
+            <a class="navigation-link" href="https://nikhil-bhat.github.io/posts/">Blog</a>
+          </li>
+        
+          <li class="navigation-item">
+            <a class="navigation-link" href="https://nikhil-bhat.github.io/projects/">Projects</a>
+          </li>
+        
+          <li class="navigation-item">
+            <a class="navigation-link" href="https://nikhil-bhat.github.io/contact/">Contact me</a>
+          </li>
+        
+      
+      
+    </ul>
+    
+  </section>
+</nav>
+
+
+      <div class="content">
+        
+  <section class="container post">
+    <article>
+      <header>
+        <div class="post-title">
+          <h1 class="title">Traceroute: How It Actually Works</h1>
+        </div>
+        <div class="post-meta">
+          <div class="date">
+            <span class="posted-on">
+              <i class="fas fa-calendar"></i>
+              <time datetime='2026-04-27T23:40:00&#43;05:30'>
+                April 27, 2026
+              </time>
+            </span>
+            <span class="reading-time">
+              <i class="fas fa-clock"></i>
+              10-minute read
+            </span>
+          </div>
+          <div class="categories">
+  <i class="fas fa-folder"></i>
+    <a href="https://nikhil-bhat.github.io/categories/networking/">networking</a></div>
+
+          <div class="tags">
+  <i class="fas fa-tag"></i>
+    <a href="https://nikhil-bhat.github.io/tags/networking/">networking</a>
+      <span class="separator">•</span>
+    <a href="https://nikhil-bhat.github.io/tags/traceroute/">traceroute</a>
+      <span class="separator">•</span>
+    <a href="https://nikhil-bhat.github.io/tags/golang/">golang</a>
+      <span class="separator">•</span>
+    <a href="https://nikhil-bhat.github.io/tags/icmp/">icmp</a>
+      <span class="separator">•</span>
+    <a href="https://nikhil-bhat.github.io/tags/udp/">udp</a></div>
+
+          <div class="series">
+  <i class="fas fa-book"></i>
+    Part 1 of <a href="https://nikhil-bhat.github.io/series/network-programming/">Network Programming</a></div>
+
+        </div>
+      </header>
+
+      <div>
+        
+<p>This is the first post in my <strong>Network Programming</strong> series. I wanted to really understand how networking tools work under the hood, so I decided to start by building <code>traceroute</code> from scratch in Go.</p>
+
+<p>We all use <code>traceroute</code> (or <code>tracert</code> on Windows) to debug network paths, but have you ever wondered what's actually happening on the wire? Let's break it down.</p>
+
+<h2>The Core Idea: TTL as a Countdown Timer</h2>
+
+<p>Every IP packet has a field called <strong>TTL (Time To Live)</strong>. Despite the name, it's not really about time — it's a <strong>hop counter</strong>. Every router that forwards a packet decrements the TTL by 1. When the TTL hits zero, the router <strong>drops</strong> the packet and sends back an <strong>ICMP Time Exceeded</strong> message to the sender.</p>
+
+<p>Traceroute exploits this beautifully:</p>
+
+<ol>
+  <li>Send a packet with <strong>TTL=1</strong> → the first router drops it and replies with ICMP Time Exceeded, revealing its IP.</li>
+  <li>Send a packet with <strong>TTL=2</strong> → the second router does the same.</li>
+  <li>Keep incrementing TTL until you reach the destination.</li>
+</ol>
+
+<p>When the packet finally reaches the destination, the destination itself responds — but with a different ICMP message: <strong>Destination Unreachable (Port Unreachable)</strong>, because we deliberately target a high, unlikely UDP port. That's our signal to stop.</p>
+
+<h2>The Architecture</h2>
+
+<p>My implementation has three concurrent components talking through Go channels:</p>
+
+<ol>
+  <li><strong>Probe Sender</strong> — sends UDP packets with incrementing TTLs</li>
+  <li><strong>ICMP Listener</strong> — listens for all incoming ICMP responses</li>
+  <li><strong>Correlator</strong> — matches ICMP responses back to the original probes</li>
+</ol>
+
+<p>Here's a high-level view of the data flow:</p>
+
+<div class="highlight"><pre style="color:#e5e5e5;background-color:#000;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-fallback" data-lang="fallback">Probe Sender ──→ UDP packets (TTL 1,2,3...) ──→ Network
+                                                    │
+                                                    ▼
+ICMP Listener ←── ICMP Time Exceeded / Dest Unreachable
+       │
+       ▼
+  Correlator ──→ matches probe → computes RTT → prints hop
+</code></pre></div>
+
+<h2>Sending Probes: The UDP Trick</h2>
+
+<p>Unlike <code>ping</code> which uses ICMP echo requests, the classic Unix <code>traceroute</code> sends <strong>UDP packets</strong> to high-numbered ports. Here's the probe implementation:</p>
+
+<div class="highlight"><pre style="color:#e5e5e5;background-color:#000;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#fff;font-weight:bold">type</span> Probe <span style="color:#fff;font-weight:bold">struct</span> {
+    DstAddr <span style="color:#fff;font-weight:bold">string</span>
+    Port    <span style="color:#fff;font-weight:bold">int</span>
+    TTL     <span style="color:#fff;font-weight:bold">int</span>
+    Seq     <span style="color:#fff;font-weight:bold">int</span>
+    SentAt  time.Time
+}
+
+<span style="color:#fff;font-weight:bold">func</span> NewProbe(dst <span style="color:#fff;font-weight:bold">string</span>, ttl <span style="color:#fff;font-weight:bold">int</span>, seq <span style="color:#fff;font-weight:bold">int</span>, basePort <span style="color:#fff;font-weight:bold">int</span>) Probe {
+    <span style="color:#fff;font-weight:bold">return</span> Probe{
+        DstAddr: dst,
+        Port:    basePort + ttl*3 + seq,
+        TTL:     ttl,
+        Seq:     seq,
+        SentAt:  time.Now(),
+    }
+}
+</code></pre></div>
+
+<p>Notice the port encoding: <code>basePort + ttl*3 + seq</code>. The base port is <strong>33435</strong> (the traditional traceroute starting port). We send <strong>3 probes per TTL</strong> (seq 0, 1, 2), each on a unique port. This is key — the port number becomes our <strong>probe identifier</strong>, letting us correlate ICMP responses back to the original probe.</p>
+
+<p>Sending the probe is straightforward — create a UDP connection, set the TTL using the <code>ipv4</code> package, and fire off an empty payload:</p>
+
+<div class="highlight"><pre style="color:#e5e5e5;background-color:#000;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#fff;font-weight:bold">func</span> (p *Probe) Send() <span style="color:#fff;font-weight:bold">error</span> {
+    dst := &amp;net.UDPAddr{
+        IP:   net.ParseIP(p.DstAddr),
+        Port: p.Port,
+    }
+
+    conn, err := net.DialUDP(<span style="color:#0ff;font-weight:bold">"udp4"</span>, <span style="color:#fff;font-weight:bold">nil</span>, dst)
+    <span style="color:#fff;font-weight:bold">if</span> err != <span style="color:#fff;font-weight:bold">nil</span> {
+        <span style="color:#fff;font-weight:bold">return</span> fmt.Errorf(<span style="color:#0ff;font-weight:bold">"dial error: %w"</span>, err)
+    }
+    <span style="color:#fff;font-weight:bold">defer</span> conn.Close()
+
+    pconn := ipv4.NewPacketConn(conn)
+    <span style="color:#fff;font-weight:bold">if</span> err := pconn.SetTTL(p.TTL); err != <span style="color:#fff;font-weight:bold">nil</span> {
+        <span style="color:#fff;font-weight:bold">return</span> fmt.Errorf(<span style="color:#0ff;font-weight:bold">"set TTL error: %w"</span>, err)
+    }
+
+    payload := make([]<span style="color:#fff;font-weight:bold">byte</span>, 12)
+    _, err = conn.Write(payload)
+    <span style="color:#fff;font-weight:bold">if</span> err != <span style="color:#fff;font-weight:bold">nil</span> {
+        <span style="color:#fff;font-weight:bold">return</span> fmt.Errorf(<span style="color:#0ff;font-weight:bold">"write error: %w"</span>, err)
+    }
+    <span style="color:#fff;font-weight:bold">return</span> <span style="color:#fff;font-weight:bold">nil</span>
+}
+</code></pre></div>
+
+<h2>Listening for ICMP Responses</h2>
+
+<p>We open a raw ICMP socket to listen for all ICMP packets arriving at our machine. The listener runs in its own goroutine and pushes parsed ICMP messages into a channel:</p>
+
+<div class="highlight"><pre style="color:#e5e5e5;background-color:#000;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go">conn, err := icmp.ListenPacket(<span style="color:#0ff;font-weight:bold">"ip4:icmp"</span>, <span style="color:#0ff;font-weight:bold">"0.0.0.0"</span>)
+</code></pre></div>
+
+<p>The listener uses a read deadline pattern so it can periodically check for context cancellation — this lets us cleanly shut down when we're done:</p>
+
+<div class="highlight"><pre style="color:#e5e5e5;background-color:#000;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#fff;font-weight:bold">func</span> listenICMP(ctx context.Context, conn *icmp.PacketConn, out <span style="color:#fff;font-weight:bold">chan</span>&lt;- ICMPEvent) {
+    buf := make([]<span style="color:#fff;font-weight:bold">byte</span>, 1500)
+    <span style="color:#fff;font-weight:bold">for</span> {
+        <span style="color:#fff;font-weight:bold">select</span> {
+        <span style="color:#fff;font-weight:bold">case</span> &lt;-ctx.Done():
+            <span style="color:#fff;font-weight:bold">return</span>
+        <span style="color:#fff;font-weight:bold">default</span>:
+        }
+
+        conn.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
+        n, from, err := conn.ReadFrom(buf)
+        <span style="color:#fff;font-weight:bold">if</span> err != <span style="color:#fff;font-weight:bold">nil</span> {
+            <span style="color:#fff;font-weight:bold">if</span> netErr, ok := err.(net.Error); ok &amp;&amp; netErr.Timeout() {
+                <span style="color:#fff;font-weight:bold">continue</span>
+            }
+            log.Printf(<span style="color:#0ff;font-weight:bold">"read error: %v\n"</span>, err)
+            <span style="color:#fff;font-weight:bold">return</span>
+        }
+
+        msg, err := icmp.ParseMessage(1, buf[:n])
+        <span style="color:#fff;font-weight:bold">if</span> err != <span style="color:#fff;font-weight:bold">nil</span> {
+            <span style="color:#fff;font-weight:bold">continue</span>
+        }
+
+        out &lt;- ICMPEvent{From: from, Msg: msg}
+    }
+}
+</code></pre></div>
+
+<h2>The Clever Part: Correlating Responses</h2>
+
+<p>Here's where it gets interesting. When a router sends back an ICMP Time Exceeded message, it includes the <strong>first 8 bytes of the original UDP packet</strong> inside the ICMP payload. Those 8 bytes contain the UDP source and <strong>destination port</strong>.</p>
+
+<p>Since we encoded the TTL and sequence number into the destination port, we can extract it from the ICMP response and match it back to our probe:</p>
+
+<div class="highlight"><pre style="color:#e5e5e5;background-color:#000;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#fff;font-weight:bold">func</span> ExtractPort(msg *icmp.Message) <span style="color:#fff;font-weight:bold">string</span> {
+    <span style="color:#fff;font-weight:bold">var</span> data []<span style="color:#fff;font-weight:bold">byte</span>
+
+    <span style="color:#fff;font-weight:bold">switch</span> msg.Type {
+    <span style="color:#fff;font-weight:bold">case</span> ipv4.ICMPTypeTimeExceeded:
+        body, ok := msg.Body.(*icmp.TimeExceeded)
+        <span style="color:#fff;font-weight:bold">if</span> !ok { <span style="color:#fff;font-weight:bold">return</span> <span style="color:#0ff;font-weight:bold">""</span> }
+        data = body.Data
+
+    <span style="color:#fff;font-weight:bold">case</span> ipv4.ICMPTypeDestinationUnreachable:
+        body, ok := msg.Body.(*icmp.DstUnreach)
+        <span style="color:#fff;font-weight:bold">if</span> !ok { <span style="color:#fff;font-weight:bold">return</span> <span style="color:#0ff;font-weight:bold">""</span> }
+        data = body.Data
+
+    <span style="color:#fff;font-weight:bold">default</span>:
+        <span style="color:#fff;font-weight:bold">return</span> <span style="color:#0ff;font-weight:bold">""</span>
+    }
+
+    ipHeader, err := ipv4.ParseHeader(data)
+    <span style="color:#fff;font-weight:bold">if</span> err != <span style="color:#fff;font-weight:bold">nil</span> { <span style="color:#fff;font-weight:bold">return</span> <span style="color:#0ff;font-weight:bold">""</span> }
+
+    offset := ipHeader.Len
+    <span style="color:#fff;font-weight:bold">if</span> len(data) &lt; offset+4 { <span style="color:#fff;font-weight:bold">return</span> <span style="color:#0ff;font-weight:bold">""</span> }
+
+    dstPort := binary.BigEndian.Uint16(data[offset+2 : offset+4])
+    <span style="color:#fff;font-weight:bold">return</span> fmt.Sprintf(<span style="color:#0ff;font-weight:bold">"%d"</span>, dstPort)
+}
+</code></pre></div>
+
+<p>The ICMP body contains the original IP header + first 8 bytes of the UDP datagram. We parse the IP header to find its length, skip past it, and read bytes 2-4 of the UDP header which hold the destination port.</p>
+
+<p>Here's a Wireshark capture showing exactly this — you can see the ICMP Time Exceeded message containing the original UDP packet with our encoded destination port:</p>
+
+<p><img src="https://nikhil-bhat.github.io/images/traceroute%20wireshark.png" alt="Wireshark capture showing ICMP Time Exceeded response containing the original UDP probe packet with encoded destination port" style="max-width:100%;border:1px solid #444;border-radius:4px;margin:1em 0;" /></p>
+
+<h2>Putting It All Together</h2>
+
+<p>The <code>main</code> function wires up the three components with Go channels. Here's the high-level flow:</p>
+
+<div class="highlight"><pre style="color:#e5e5e5;background-color:#000;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#fff;font-weight:bold">func</span> main() {
+    conn, err := icmp.ListenPacket(<span style="color:#0ff;font-weight:bold">"ip4:icmp"</span>, <span style="color:#0ff;font-weight:bold">"0.0.0.0"</span>)
+    <span style="color:#007f7f">// ... error handling ...</span>
+
+    ctx, cancel := context.WithCancel(context.Background())
+    probeChan := make(<span style="color:#fff;font-weight:bold">chan</span> probe.Probe)
+    icmpEventChan := make(<span style="color:#fff;font-weight:bold">chan</span> ICMPEvent)
+    HopChan := make(<span style="color:#fff;font-weight:bold">chan</span> HopResult)
+
+    <span style="color:#007f7f">// 1. ICMP Listener goroutine</span>
+    wg.Go(<span style="color:#fff;font-weight:bold">func</span>() { listenICMP(ctx, conn, icmpEventChan) })
+
+    <span style="color:#007f7f">// 2. Probe Sender goroutine — fires every 500ms</span>
+    <span style="color:#fff;font-weight:bold">go</span> <span style="color:#fff;font-weight:bold">func</span>() {
+        ticker := time.NewTicker(5000 * time.Millisecond)
+        seq := 0; ttl := 1
+        <span style="color:#fff;font-weight:bold">for</span> {
+            <span style="color:#fff;font-weight:bold">select</span> {
+            <span style="color:#fff;font-weight:bold">case</span> &lt;-ctx.Done(): <span style="color:#fff;font-weight:bold">return</span>
+            <span style="color:#fff;font-weight:bold">case</span> &lt;-ticker.C:
+                p := probe.NewProbe(<span style="color:#0ff;font-weight:bold">"8.8.8.8"</span>, ttl, seq, 33435)
+                p.Send()
+                probeChan &lt;- p
+                seq++
+                <span style="color:#fff;font-weight:bold">if</span> seq &gt; 2 { seq = 0; ttl++ }
+                <span style="color:#fff;font-weight:bold">if</span> ttl &gt; MAX_TTL { cancel() }
+            }
+        }
+    }()
+
+    <span style="color:#007f7f">// 3. Correlator goroutine</span>
+    <span style="color:#fff;font-weight:bold">go</span> <span style="color:#fff;font-weight:bold">func</span>() {
+        probeMap := make(<span style="color:#fff;font-weight:bold">map</span>[<span style="color:#fff;font-weight:bold">string</span>]probe.Probe)
+        <span style="color:#fff;font-weight:bold">for</span> {
+            <span style="color:#fff;font-weight:bold">select</span> {
+            <span style="color:#fff;font-weight:bold">case</span> event := &lt;-icmpEventChan:
+                probePort := probe.ExtractPort(event.Msg)
+                v, ok := probeMap[probePort]
+                <span style="color:#fff;font-weight:bold">if</span> ok {
+                    duration := time.Since(v.SentAt)
+                    t, _ := strconv.Atoi(probePort)
+                    t = t - 33435
+                    HopChan &lt;- HopResult{t / 3, duration, event.From}
+                }
+                <span style="color:#007f7f">// Destination reached!</span>
+                <span style="color:#fff;font-weight:bold">if</span> event.Msg.Type == ipv4.ICMPTypeDestinationUnreachable &amp;&amp;
+                   event.Msg.Code == 3 {
+                    cancel()
+                    <span style="color:#fff;font-weight:bold">return</span>
+                }
+            <span style="color:#fff;font-weight:bold">case</span> pb := &lt;-probeChan:
+                probeMap[fmt.Sprintf(<span style="color:#0ff;font-weight:bold">"%d"</span>, pb.Port)] = pb
+            }
+        }
+    }()
+
+    wg.Wait()
+}
+</code></pre></div>
+
+<h2>How We Know We've Arrived</h2>
+
+<p>The stop condition is elegant. When our UDP probe actually reaches the destination (e.g., <code>8.8.8.8</code>), the destination machine sees a UDP packet on a random high port where nothing is listening. It responds with <strong>ICMP Destination Unreachable, Code 3 (Port Unreachable)</strong>.</p>
+
+<p>We check for exactly this in the correlator:</p>
+
+<div class="highlight"><pre style="color:#e5e5e5;background-color:#000;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#fff;font-weight:bold">if</span> event.Msg.Type == ipv4.ICMPTypeDestinationUnreachable &amp;&amp; event.Msg.Code == 3 {
+    cancel()
+    <span style="color:#fff;font-weight:bold">return</span>
+}
+</code></pre></div>
+
+<h2>The Port 30000 Rabbit Hole</h2>
+
+<p>One interesting challenge I ran into — I initially started with <strong>port 30000</strong> as my base port instead of 33435. Everything seemed to work fine for the intermediate hops (I was getting ICMP Time Exceeded responses from routers along the path), but the traceroute would <strong>never terminate</strong>. The destination host simply wasn't sending back an ICMP Port Unreachable message.</p>
+
+<p>After some head-scratching and Wireshark sessions, it clicked: ports in the 30000 range are commonly used by real services. If something on the destination is actually <strong>listening</strong> on that port, the packet gets accepted instead of being rejected — and you never get your Port Unreachable signal. The classic traceroute base port of <strong>33435</strong> was chosen precisely because it sits in the ephemeral/high port range where nothing is typically listening. A small detail, but it completely breaks the stop condition if you get it wrong.</p>
+
+<h2>Running It</h2>
+
+<p>Since we're opening raw ICMP sockets, you need root privileges:</p>
+
+<div class="highlight"><pre style="color:#e5e5e5;background-color:#000;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">sudo go run main.go
+</code></pre></div>
+
+<p>Sample output tracing to <code>8.8.8.8</code>:</p>
+
+<div class="highlight"><pre style="color:#e5e5e5;background-color:#000;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-fallback" data-lang="fallback">Listening for ICMP packets on 0.0.0.0 ...
+1,192.168.1.1,2.341ms
+2,10.194.0.1,8.712ms
+3,72.14.216.72,12.456ms
+4,108.170.251.33,14.231ms
+5,8.8.8.8,15.892ms
+🎯 Destination reached!
+</code></pre></div>
+
+<h2>Key Takeaways</h2>
+
+<ul>
+  <li><strong>TTL is the mechanism</strong> — each hop decrements it; when it hits 0, the router tells us who it is.</li>
+  <li><strong>UDP + high ports</strong> — we send to ports nothing listens on, so the destination replies with Port Unreachable.</li>
+  <li><strong>Port encoding</strong> — encoding TTL and sequence into the port number gives us a cheap correlation ID without needing to track packet IDs.</li>
+  <li><strong>ICMP carries the evidence</strong> — both Time Exceeded and Destination Unreachable messages include the original IP header + 8 bytes of the triggering packet, letting us extract the port and match it back.</li>
+  <li><strong>Go's concurrency model</strong> — channels and goroutines make it natural to express the probe-listen-correlate pipeline.</li>
+</ul>
+
+<h2>A Note on the Code</h2>
+
+<p>Fair warning — the code is a mess right now, and I'm okay with that. The whole point of this exercise was to <strong>learn by doing</strong>: get hands-on with goroutines, channels, and raw sockets. Not to produce production-grade code. I'll refine it over time as the series progresses.</p>
+
+<p>Also worth mentioning — I didn't use AI to write this code. The implementation is all hand-written. I only used AI assistance afterwards to clean up some of the rough edges. I think that distinction matters when you're trying to actually learn how something works.</p>
+
+<h2>What's Next</h2>
+
+<p>In the next post in this series, we'll explore more network programming concepts. The full source code is available on <a href="https://github.com/nikhil-bhat/traceroute">GitHub</a>.</p>
+
+      </div>
+
+
+      <footer>
+        
+
+        
+        
+        
+      </footer>
+    </article>
+
+    
+  </section>
+
+      </div>
+
+      <footer class="footer">
+  <section class="container">
+    
+      <p>awesome footer</p>
+    
+    
+      
+        © 2019 - 2026
+      
+       Nikhil Bhat 
+    
+    
+       · 
+      Powered by <a href="https://gohugo.io/">Hugo</a> & <a href="https://github.com/luizdepra/hugo-coder/">Coder</a>.
+    
+    
+  </section>
+</footer>
+
+    </main>
+
+    
+
+    
+
+  </body>
+
+</html>
